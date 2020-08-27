@@ -30,3 +30,9 @@ Make sure to use the same `--K` for both runs.
 ### Reference
 Maja Rudolph and David Blei, 2017. [Dynamic Bernoulli Embeddings for Language Evolution](https://arxiv.org/abs/1703.08052).
 arxiv preprint arxiv:1703.08052.
+
+### Version Control (for ALP)
+Tensorflow: 2.3.0
+Tensorflow probability: 0.11.0
+Python 3: 3.8.2
+GCC: 9.3.0
