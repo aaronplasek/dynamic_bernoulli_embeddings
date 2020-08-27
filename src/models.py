@@ -2,11 +2,14 @@ import numpy as np
 import os
 import pickle
 import tensorflow as tf
-from tensorflow.contrib.distributions import Normal, Bernoulli
-from tensorflow.contrib.tensorboard.plugins import projector
+
+import tensorflow_probability as tfp      # replaces: from tensorflow.contrib.distributions import Normal, Bernoulli
+tfd = tfp.distributions                   # used to for tfd.Normal and tfd. Bernoulli calls  
+from tensorboard.plugins import projector # replaces: from tensorflow.contrib.tensorboard.plugins import projector
 
 from sklearn.manifold import TSNE
 from utils import *
+
 
 
 class emb_model(object):
@@ -66,7 +69,7 @@ class emb_model(object):
 
     def plot_params(self, plot_only=500):
         with self.sess.as_default():
-	    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+            tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
             low_dim_embs_alpha2 = tsne.fit_transform(self.alpha.eval()[:plot_only])
             plot_with_labels(low_dim_embs_alpha2[:plot_only], self.labels[:plot_only], self.logdir + '/alpha.eps')
 
@@ -166,7 +169,7 @@ class bern_emb_model(emb_model):
                 self.alpha = tf.Variable(self.alpha_init, name='alpha', trainable=self.alpha_trainable)
 
                 with tf.name_scope('priors'):
-                    prior = Normal(loc = 0.0, scale = self.sig)
+                    prior = tdf.Normal(loc = 0.0, scale = self.sig)
                     if self.alpha_trainable:
                         self.log_prior = tf.reduce_sum(prior.log_prob(self.rho) + prior.log_prob(self.alpha))
                     else:
@@ -195,8 +198,8 @@ class bern_emb_model(emb_model):
                 self.n_eta = tf.reduce_sum(tf.multiply(self.n_rho, tf.tile(tf.expand_dims(ctx_sum,1),[1,self.ns,1])),-1)
             
             # Conditional likelihood
-            self.y_pos = Bernoulli(logits = self.p_eta)
-            self.y_neg = Bernoulli(logits = self.n_eta)
+            self.y_pos = tfd.Bernoulli(logits = self.p_eta)
+            self.y_neg = tfd.Bernoulli(logits = self.n_eta)
 
             self.ll_pos = tf.reduce_sum(self.y_pos.log_prob(1.0)) 
             self.ll_neg = tf.reduce_sum(self.y_neg.log_prob(0.0))
@@ -230,8 +233,8 @@ class dynamic_bern_emb_model(emb_model):
                         name = 'rho_'+str(t))
 
                 with tf.name_scope('priors'):
-                    global_prior = Normal(loc = 0.0, scale = self.sig)
-                    local_prior = Normal(loc = 0.0, scale = self.sig/100.0)
+                    global_prior = tfd.Normal(loc = 0.0, scale = self.sig)
+                    local_prior = tfd.Normal(loc = 0.0, scale = self.sig/100.0)
 
                     self.log_prior = tf.reduce_sum(global_prior.log_prob(self.alpha))
                     self.log_prior = tf.reduce_sum(global_prior.log_prob(self.rho_t[-1]))
@@ -275,8 +278,8 @@ class dynamic_bern_emb_model(emb_model):
                     n_eta = tf.reduce_sum(tf.multiply(n_rho, tf.tile(tf.expand_dims(ctx_sum,1),[1,self.ns,1])),-1)
                     
                     # Conditional likelihood
-                    self.y_pos[t] = Bernoulli(logits = p_eta)
-                    self.y_neg[t] = Bernoulli(logits = n_eta)
+                    self.y_pos[t] = tfd.Bernoulli(logits = p_eta)
+                    self.y_neg[t] = tfd.Bernoulli(logits = n_eta)
 
                     self.ll_pos += tf.reduce_sum(self.y_pos[t].log_prob(1.0)) 
                     self.ll_neg += tf.reduce_sum(self.y_neg[t].log_prob(0.0))
@@ -300,7 +303,7 @@ class dynamic_bern_emb_model(emb_model):
 
     def plot_params(self, plot_only=500):
         with self.sess.as_default():
-	    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+            tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
             low_dim_embs_alpha = tsne.fit_transform(self.alpha.eval()[:plot_only])
             plot_with_labels(low_dim_embs_alpha[:plot_only], self.labels[:plot_only], self.logdir + '/alpha.eps')
             for t in [0, int(self.T/2), self.T-1]:
